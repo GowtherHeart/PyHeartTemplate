@@ -194,3 +194,6 @@ class CliController(Controller, metaclass=Singleton):
     async def execute(self) -> None:
         """Execute the CLI command logic."""
         raise NotImplementedError
+
+
+class ConsumerController(Controller, metaclass=Singleton): ...

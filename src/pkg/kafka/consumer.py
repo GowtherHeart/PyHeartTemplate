@@ -51,7 +51,8 @@ class ConsumerKafka:
     async def exec(self) -> None:
         consumer = AIOKafkaConsumer(
             *self.topic_array,
-            bootstrap_servers=",".join(self.bootstrap_server_array),
+            # bootstrap_servers=",".join(self.bootstrap_server_array),
+            bootstrap_servers=self.bootstrap_server_array,
             group_id=self.group_id,
             sasl_mechanism=self.sasl_mechanism,
             sasl_plain_username=self.__sasl_username,

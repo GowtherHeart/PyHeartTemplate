@@ -1,8 +1,9 @@
 import asyncio
-from src.pkg.abc.cmd import Cmd
-from src.pkg.kafka.consumer import ConsumerKafka
+
 from src.config.app import ConfigName, get_config
 from src.controllers.sample.kafka import SampleController
+from src.pkg.abc.cmd import Cmd
+from src.pkg.kafka.consumer import ConsumerKafka
 
 
 class CoreConsumerCmd(Cmd):

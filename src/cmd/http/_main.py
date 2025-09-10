@@ -113,7 +113,7 @@ class HttpCmd(Cmd):
         async def custom_swagger_ui_html():
             return get_swagger_ui_html(
                 openapi_url="/openapi.json",
-                title="PyHeart - Swagger UI",
+                title="PyHeartTemplate - Swagger UI",
                 swagger_ui_parameters={
                     "defaultModelsExpandDepth": -1,
                     "syntaxHighlight": {"theme": "tomorrow-night"},

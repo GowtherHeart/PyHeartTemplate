@@ -8,6 +8,7 @@ from src.internal.fastapi.controller import HttpController
 from src.models.request import sample as sample_req
 from src.models.response.sample import SampleCoreRespModel
 from src.pkg.abc.controller import router
+from src.repository.click import SelectQueryClick
 from src.usecase.sample import SampleV1US
 
 from ._examples import (
@@ -71,3 +72,16 @@ class SampleCoreControllerV1(HttpController):
         """Update an existing Sample by name."""
         result = await SampleV1US().update(payload=payload)
         return SampleCoreRespModel(**result.model_dump())
+
+
+class TestCoreControllerV1(HttpController):
+    prefix = "/test"
+    tags = ["test"]
+
+    @router(
+        path="/test",
+        status_code=status.HTTP_200_OK,
+    )
+    async def get(self) -> dict:
+        res = await SelectQueryClick().execute()
+        return res

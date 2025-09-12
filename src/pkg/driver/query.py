@@ -5,6 +5,7 @@ from typing import Any
 from loguru import logger
 
 from src.pkg.driver.postgres import PostgresDriver
+from src.pkg.driver.clickhouse._main import ClickhouseDriver
 
 
 class Query:
@@ -32,7 +33,7 @@ class Query:
 
     query: str = NotImplemented
     param: Sequence
-    driver: PostgresDriver
+    driver: PostgresDriver | ClickhouseDriver
     model: Any = None
     array: bool = False
     skip: bool = False

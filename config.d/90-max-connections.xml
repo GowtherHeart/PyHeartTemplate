@@ -1,0 +1,7 @@
+<clickhouse>
+  <max_connections>100000000</max_connections>
+  <tcp_close_connection_after_queries_num>100000000</tcp_close_connection_after_queries_num>
+  <tcp_close_connection_after_queries_seconds>100000000</tcp_close_connection_after_queries_seconds>
+  <TCP_CONNECTION_LIMIT_REACHED>100000000</TCP_CONNECTION_LIMIT_REACHED>
+
+</clickhouse>

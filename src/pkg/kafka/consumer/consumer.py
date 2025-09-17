@@ -1,3 +1,10 @@
+"""Single-message Kafka consumer implementations.
+
+ConsumerKafka processes messages one-by-one, validating and handing each to a
+controller. The RS variant (ConsumerKafkaRS) enables Schema Registry JSON
+validation for Confluent wire-formatted messages.
+"""
+
 from aiokafka import AIOKafkaConsumer, TopicPartition
 from loguru import logger
 
@@ -14,7 +21,19 @@ __all__ = ["ConsumerKafka", "ConsumerKafkaRS"]
 
 
 class ConsumerKafka(_BaseConsumer):
+    """Simple per-message consumer."""
+
     async def exec(self) -> None:
+        """Run the consume loop and process each message.
+
+        - Optionally validates payloads via Schema Registry
+        - Converts the payload into the configured controller model
+        - Calls controller per message
+        - Commits the message offset when auto-commit is disabled
+
+        Returns:
+            None
+        """
         consumer = AIOKafkaConsumer(
             *self.topic_array,
             bootstrap_servers=self.bootstrap_server_array,
@@ -51,6 +70,7 @@ class ConsumerKafka(_BaseConsumer):
                         else:
                             payload_bytes = msg.value
 
+                        # Convert raw bytes to the controller's model instance/value.
                         payload = await self._validation(model=self.controller.model, payload=payload_bytes)  # type: ignore
                         await self.controller.execute(payload=payload)  # type: ignore
 
@@ -78,5 +98,7 @@ class ConsumerKafka(_BaseConsumer):
 
 
 class ConsumerKafkaRS(ConsumerKafka):
+    """Per-message consumer with Schema Registry JSON validation enabled."""
+
     async def _validation_schema(self, msg) -> bytes:
         return await self._validate_json_schema(msg=msg)

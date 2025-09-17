@@ -1,3 +1,13 @@
+"""Kafka consumer that processes messages in batches.
+
+MaxBatchConsumer accumulates messages across all assigned topic-partitions
+using ``getmany`` with configurable timeout and max-records, validates them,
+executes a controller once per batch, and conditionally commits offsets.
+
+The RS variant (MaxBatchConsumerRS) enables Schema Registry JSON validation
+for Confluent wire-formatted messages.
+"""
+
 import asyncio
 
 from aiokafka import AIOKafkaConsumer, TopicPartition
@@ -17,12 +27,30 @@ __all__ = ["MaxBatchConsumer", "MaxBatchConsumerRS"]
 
 
 class MaxBatchConsumer(_BaseConsumer):
+    """Batching consumer with max-records and timeout controls."""
 
     def init_batch_settings(self, timeout_ms: int, max_records: int) -> None:
+        """Configure batch timeout and maximum polled records.
+
+        Args:
+            timeout_ms: Maximum time in milliseconds to wait for a batch.
+            max_records: Maximum number of records to retrieve per poll.
+        """
         self._batch_timeout_ms = timeout_ms
         self._batch_max_records = max_records
 
     async def exec(self) -> None:
+        """Run the batch polling loop and process messages.
+
+        - Polls using ``getmany`` to collect messages across partitions
+        - Optionally validates payloads via Schema Registry
+        - Converts payloads into the configured controller model
+        - Calls controller once per batch with the list of parsed payloads
+        - Commits offsets up to the max seen per partition when auto-commit is disabled
+
+        Returns:
+            None
+        """
         consumer = AIOKafkaConsumer(
             *self.topic_array,
             bootstrap_servers=self.bootstrap_server_array,
@@ -43,6 +71,7 @@ class MaxBatchConsumer(_BaseConsumer):
         try:
             while True:
                 try:
+                    # Poll messages across all assigned topic partitions.
                     msg_map = await consumer.getmany(
                         timeout_ms=self._batch_timeout_ms,
                         max_records=self._batch_max_records,
@@ -75,6 +104,7 @@ class MaxBatchConsumer(_BaseConsumer):
                                 else:
                                     payload_bytes = m.value
 
+                                # Collect raw payload bytes for later validation.
                                 msg_array.append(payload_bytes)  # type: ignore
                                 max_offset_by_tp[tp] = max(
                                     max_offset_by_tp.get(tp, -1), m.offset
@@ -85,6 +115,7 @@ class MaxBatchConsumer(_BaseConsumer):
                             continue
 
                         try:
+                            # Convert raw bytes to typed payloads in bulk.
                             data_array = await self._array_validation(payload=msg_array, model=self.controller.model)  # type: ignore
                             await self.controller.execute(payload=data_array)  # type: ignore
 
@@ -93,6 +124,7 @@ class MaxBatchConsumer(_BaseConsumer):
                                 and max_offset_by_tp
                                 and not self.uncommited_mode
                             ):
+                                # Commit to the next offset after the max seen per TP.
                                 commit_map = {
                                     tp: offset + 1
                                     for tp, offset in max_offset_by_tp.items()
@@ -123,5 +155,7 @@ class MaxBatchConsumer(_BaseConsumer):
 
 
 class MaxBatchConsumerRS(MaxBatchConsumer):
+    """Batching consumer with Schema Registry JSON validation enabled."""
+
     async def _validation_schema(self, msg) -> bytes:
         return await self._validate_json_schema(msg=msg)

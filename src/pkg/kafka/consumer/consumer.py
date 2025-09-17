@@ -1,21 +1,19 @@
-import json
-
-import jsonschema
 from aiokafka import AIOKafkaConsumer, TopicPartition
-from confluent_kafka.schema_registry.schema_registry_client import (
-    AsyncSchemaRegistryClient,
-)
 from loguru import logger
 
 from src.pkg.context._main import get_tx_id, make_tx_id
 from src.pkg.core.exception import CoreException
+from src.pkg.kafka.exception import (
+    SchemaRegistryException,
+    UnsupportedBytesSchemaException,
+)
 
 from ._base import _BaseConsumer
 
-__all__ = ["ConsumerKafka", "RegistyConsumerKafka"]
+__all__ = ["ConsumerKafka", "ConsumerKafkaRS"]
 
 
-class _Consumer(_BaseConsumer):
+class ConsumerKafka(_BaseConsumer):
     async def exec(self) -> None:
         consumer = AIOKafkaConsumer(
             *self.topic_array,
@@ -40,9 +38,23 @@ class _Consumer(_BaseConsumer):
                 with logger.contextualize(request_id=get_tx_id()):
                     logger.info("[kafka] reading msg")
                     try:
-                        await self._exec(msg=msg)
-                        # Commit manually when auto-commit is disabled.
-                        if not self._enable_auto_commit:
+                        if self.registry_client is not None:
+                            try:
+                                payload_bytes = await self._validation_schema(msg=msg)
+
+                            except UnsupportedBytesSchemaException:
+                                ...  # TODO: make action
+
+                            except SchemaRegistryException:
+                                ...  # TODO: make action
+
+                        else:
+                            payload_bytes = msg.value
+
+                        payload = await self._validation(model=self.controller.model, payload=payload_bytes)  # type: ignore
+                        await self.controller.execute(payload=payload)  # type: ignore
+
+                        if not self._enable_auto_commit and not self.uncommited_mode:
                             tp = TopicPartition(
                                 topic=msg.topic, partition=msg.partition
                             )
@@ -65,47 +77,6 @@ class _Consumer(_BaseConsumer):
             await consumer.stop()
 
 
-class ConsumerKafka(_Consumer):
-    async def _exec(self, msg) -> None:
-        payload = await self._validation(model=self.controller.model, payload=msg.value)  # type: ignore
-        await self.controller.execute(payload=payload)  # type: ignore
-
-
-class RegistyConsumerKafka(_Consumer):
-    def init_registry(
-        self,
-        url: str,
-        key_location: str | None = None,
-        certificate_location: str | None = None,
-        ca_location: str | None = None,
-        user_auth: str | None = None,
-    ) -> None:
-        self.__registry_config = {
-            "url": url,
-            "ssl.key.location": key_location,
-            "ssl.certificate.location": certificate_location,
-            "ssl.ca.location": ca_location,
-            "basic.auth.user.info": user_auth,
-        }
-        self.registry_client = AsyncSchemaRegistryClient(self.__registry_config)
-
-    async def _exec(self, msg) -> None:
-        raw = msg.value
-        if isinstance(raw, (bytes, bytearray)) and len(raw) >= 5 and raw[0] == 0:
-            schema_id = int.from_bytes(raw[1:5], byteorder="big", signed=False)
-            payload_bytes = raw[5:]
-
-        else:
-            return
-
-        try:
-            resp = await self.registry_client.get_schema(schema_id=schema_id)
-            data = resp.to_dict()
-        except Exception:
-            return
-
-        schema = json.loads(data["schema"])
-        jsonschema.validate(instance=json.loads(payload_bytes), schema=schema)
-
-        payload = await self._validation(model=self.controller.model, payload=payload_bytes)  # type: ignore
-        await self.controller.execute(payload=payload)  # type: ignore
+class ConsumerKafkaRS(ConsumerKafka):
+    async def _validation_schema(self, msg) -> bytes:
+        return await self._validate_json_schema(msg=msg)

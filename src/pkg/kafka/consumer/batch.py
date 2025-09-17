@@ -6,13 +6,18 @@ from loguru import logger
 
 from src.pkg.context._main import get_tx_id, make_tx_id
 from src.pkg.core.exception import CoreException
+from src.pkg.kafka.exception import (
+    SchemaRegistryException,
+    UnsupportedBytesSchemaException,
+)
 
 from ._base import _BaseConsumer
 
-__all__ = ["MaxBatchConsumer"]
+__all__ = ["MaxBatchConsumer", "MaxBatchConsumerRS"]
 
 
 class MaxBatchConsumer(_BaseConsumer):
+
     def init_batch_settings(self, timeout_ms: int, max_records: int) -> None:
         self._batch_timeout_ms = timeout_ms
         self._batch_max_records = max_records
@@ -55,7 +60,22 @@ class MaxBatchConsumer(_BaseConsumer):
                                 continue
 
                             for m in messages:
-                                msg_array.append(m.value)  # type: ignore
+                                if self.registry_client is not None:
+                                    try:
+                                        payload_bytes = await self._validation_schema(
+                                            msg=m
+                                        )
+
+                                    except UnsupportedBytesSchemaException:
+                                        ...  # TODO: make action
+
+                                    except SchemaRegistryException:
+                                        ...  # TODO: make action
+
+                                else:
+                                    payload_bytes = m.value
+
+                                msg_array.append(payload_bytes)  # type: ignore
                                 max_offset_by_tp[tp] = max(
                                     max_offset_by_tp.get(tp, -1), m.offset
                                 )
@@ -68,8 +88,11 @@ class MaxBatchConsumer(_BaseConsumer):
                             data_array = await self._array_validation(payload=msg_array, model=self.controller.model)  # type: ignore
                             await self.controller.execute(payload=data_array)  # type: ignore
 
-                            # Commit only after successful processing when auto-commit is disabled
-                            if not self._enable_auto_commit and max_offset_by_tp:
+                            if (
+                                not self._enable_auto_commit
+                                and max_offset_by_tp
+                                and not self.uncommited_mode
+                            ):
                                 commit_map = {
                                     tp: offset + 1
                                     for tp, offset in max_offset_by_tp.items()
@@ -97,3 +120,8 @@ class MaxBatchConsumer(_BaseConsumer):
 
         finally:
             await consumer.stop()
+
+
+class MaxBatchConsumerRS(MaxBatchConsumer):
+    async def _validation_schema(self, msg) -> bytes:
+        return await self._validate_json_schema(msg=msg)

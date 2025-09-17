@@ -1,9 +1,5 @@
 import hashlib
 from typing import Any
-from clickhouse_driver import Client
-
-from clickhouse_driver.dbapi.extras import DictCursor as hueta_dict
-from clickhouse_driver import connect
 
 from asynch import Connection, DictCursor, Pool
 

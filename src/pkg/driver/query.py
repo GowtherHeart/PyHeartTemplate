@@ -4,8 +4,8 @@ from typing import Any
 
 from loguru import logger
 
-from src.pkg.driver.postgres import PostgresDriver
 from src.pkg.driver.clickhouse._main import ClickhouseDriver
+from src.pkg.driver.postgres import PostgresDriver
 
 
 class Query:

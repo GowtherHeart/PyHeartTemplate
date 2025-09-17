@@ -1,9 +1,8 @@
 import asyncio
 
 from asynch import Connection, Pool
-from clickhouse_driver import Client
+from clickhouse_driver import Client, connect
 from clickhouse_driver.dbapi.extras import DictCursor
-from clickhouse_driver import connect
 from loguru import logger
 
 from src.pkg.driver.clickhouse._main import ClickhouseDriver
@@ -33,10 +32,10 @@ def test_driver():
     res = client.execute("select 1;")
     print("RES = ", res)
 
-    with connect('clickhouse://root:password@0.0.0.0:9000/default') as conn:
+    with connect("clickhouse://root:password@0.0.0.0:9000/default") as conn:
         with conn.cursor(cursor_factory=DictCursor) as cursor:
-           cursor.execute('select 1;')
-           print(cursor.fetchone())
+            cursor.execute("select 1;")
+            print(cursor.fetchone())
 
 
 async def use_pool():

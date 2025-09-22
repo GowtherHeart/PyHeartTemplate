@@ -1,10 +1,21 @@
+import json
+from io import StringIO
 from src.pkg.logging import LoggingInit
+from loguru import logger
 
 
-def test_logging_init_format_contains_expected_fields():
-    fmt = LoggingInit(lvl="INFO").format()
-    # Ensure the format contains key placeholders used by our logs
-    assert "{time:" in fmt
-    assert "{level}" in fmt
-    assert "{name}" in fmt and "{function}" in fmt and "{line}" in fmt
-    assert "{extra[request_id]}" in fmt
+def test_logging_outputs_json(monkeypatch):
+    buf = StringIO()
+    monkeypatch.setattr("sys.stdout", buf)
+
+    LoggingInit(lvl="INFO")
+
+    logger.bind(request_id="test-req").info("hello-json")
+
+    lines = [l for l in buf.getvalue().splitlines() if l.strip()]
+    assert lines, "expected one JSON log line"
+    data = json.loads(lines[-1])
+
+    assert data["message"] == "hello-json"
+    assert data["level"] == "INFO"
+    assert data.get("request_id") == "test-req"

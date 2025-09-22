@@ -59,7 +59,7 @@ class ConsumerKafka:
             sasl_plain_password=self.__sasl_password,
         )
         with logger.contextualize(request_id="init"):
-            logger.info("RUN CONSUMER")
+            logger.bind(event="kafka_run").info("kafka")
 
         await consumer.start()
         try:
@@ -67,7 +67,7 @@ class ConsumerKafka:
                 make_tx_id()
                 with logger.contextualize(request_id=get_tx_id()):
                     try:
-                        logger.info("KafkaSTART")
+                        logger.bind(event="kafka_start").info("kafka")
                         payload = await self._validation(model=self.controller.model, payload=msg.value)  # type: ignore
                         await self.controller.execute(payload=payload)  # type: ignore
                     except CoreException as exc:
@@ -80,9 +80,9 @@ class ConsumerKafka:
                         logger.exception(f"KAFKA_EXCEPTION: {exc}")
 
                     finally:
-                        logger.info("KafkaEND")
+                        logger.bind(event="kafka_end").info("kafka")
         finally:
             with logger.contextualize(request_id="init"):
-                logger.info("STOP CONSUMER")
+                logger.bind(event="kafka_stop").info("kafka")
 
             await consumer.stop()

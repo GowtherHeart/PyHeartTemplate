@@ -16,21 +16,19 @@ def RequestLogger(
     time_exec: str | None = None,
     content: bytes | None = None,
 ) -> None:
-    _message = ""
-
-    _message += f"[STATE-{state}]"
-
-    if time_exec is not None:
-        _message += f"[Time-{time_exec}]"
-
-    _message += f" URL: {url}, Method: {method}"
+    extra: dict[str, object] = {
+        "state": state,
+        "url": url,
+        "method": method,
+    }
     if status_code is not None:
-        _message += f", Status-Code: {status_code}"
-
+        extra["status_code"] = status_code
+    if time_exec is not None:
+        extra["time_exec"] = time_exec
     if content is not None:
-        _message += f", Content: {content!r}"
+        extra["content"] = str(content)
 
-    logger.opt(depth=1).info(_message)
+    logger.opt(depth=1).bind(**extra).info("http_request")
 
 
 class MasterMiddelware(BaseHTTPMiddleware):

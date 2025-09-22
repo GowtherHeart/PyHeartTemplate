@@ -3,31 +3,35 @@ from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 from loguru import logger
 
+import json
+from io import StringIO
 from src.pkg.fastapi.middleware import MasterMiddelware, RequestLogger
+from src.pkg.logging import LoggingInit
 
 
-def test_request_logger_message_building():
-    messages: list[str] = []
-    i = logger.add(lambda m: messages.append(m))
-    try:
-        RequestLogger(
-            url="/x",
-            method="GET",
-            state="OPEN",
-            status_code=200,
-            content=b"body",
-            time_exec="0.01",
-        )
-    finally:
-        logger.remove(i)
+def test_request_logger_message_building(monkeypatch):
+    buf = StringIO()
+    monkeypatch.setattr("sys.stdout", buf)
+    LoggingInit(lvl="INFO")
 
-    assert messages, "Expected at least one log message to be captured"
-    msg = messages[-1]
-    assert "[STATE-OPEN]" in msg
-    assert "[Time-0.01]" in msg
-    assert "URL: /x, Method: GET" in msg
-    assert ", Status-Code: 200" in msg
-    assert ", Content: b'body'" in msg
+    RequestLogger(
+        url="/x",
+        method="GET",
+        state="OPEN",
+        status_code=200,
+        content=b"body",
+        time_exec="0.01",
+    )
+
+    lines = [l for l in buf.getvalue().splitlines() if l.strip()]
+    assert lines, "Expected at least one log line"
+    data = json.loads(lines[-1])
+    assert data["state"] == "OPEN"
+    assert data["time_exec"] == "0.01"
+    assert data["url"] == "/x"
+    assert data["method"] == "GET"
+    assert data["status_code"] == 200
+    assert data["content"] == "b'body'"
 
 
 @pytest.mark.asyncio

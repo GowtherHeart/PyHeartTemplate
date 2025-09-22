@@ -48,14 +48,19 @@ class ConsumerKafka(_BaseConsumer):
             auto_offset_reset=self._auto_offset_reset,
         )
         with logger.contextualize(request_id="init"):
-            logger.info("[kafka] run")
+            logger.bind(event="kafka_run").info("kafka")
 
         await consumer.start()
         try:
             async for msg in consumer:
                 make_tx_id()
                 with logger.contextualize(request_id=get_tx_id()):
-                    logger.info("[kafka] reading msg")
+                    logger.bind(
+                        event="kafka_reading_msg",
+                        topic=msg.topic,
+                        partition=msg.partition,
+                        offset=msg.offset,
+                    ).info("kafka")
                     try:
                         if self.registry_client is not None:
                             try:
@@ -89,10 +94,10 @@ class ConsumerKafka(_BaseConsumer):
                         logger.exception(f"[kafka] exception: {exc}")
 
                     finally:
-                        logger.info("[kafka] stop reading msg")
+                        logger.bind(event="kafka_stop_reading_msg").info("kafka")
         finally:
             with logger.contextualize(request_id="meta"):
-                logger.info("[kafka] stop consumer")
+                logger.bind(event="kafka_stop_consumer").info("kafka")
 
             await consumer.stop()
 

@@ -72,7 +72,7 @@ class MaxBatchConsumer(_BaseConsumer):
             auto_offset_reset=self._auto_offset_reset,
         )
         with logger.contextualize(request_id="init"):
-            logger.info("[kafka] run")
+            logger.bind(event="kafka_run").info("kafka")
 
         await consumer.start()
         try:
@@ -86,7 +86,13 @@ class MaxBatchConsumer(_BaseConsumer):
 
                     make_tx_id()
                     with logger.contextualize(request_id=get_tx_id()):
-                        logger.info(f"[kafka] reading msg {msg_map.__str__()[:1000]}")
+                        logger.bind(
+                            event="kafka_reading_batch",
+                            partitions=[
+                                {"topic": tp.topic, "partition": tp.partition}
+                                for tp in msg_map.keys()
+                            ],
+                        ).info("kafka")
 
                         # Aggregate messages across all topics/partitions
                         msg_array: list[bytes] = []
@@ -132,7 +138,7 @@ class MaxBatchConsumer(_BaseConsumer):
                                 )
 
                         if not msg_array and not msg_array_err:
-                            logger.info("[kafka] no messages polled")
+                            logger.bind(event="kafka_no_messages").info("kafka")
                             continue
 
                         try:
@@ -159,7 +165,7 @@ class MaxBatchConsumer(_BaseConsumer):
                             logger.exception(f"[kafka] exception: {exc}")
 
                         finally:
-                            logger.info("[kafka] stop reading msg")
+                            logger.bind(event="kafka_stop_reading_batch").info("kafka")
 
                 except OffsetOutOfRangeError as err:
                     # Seek to beginning for all affected partitions

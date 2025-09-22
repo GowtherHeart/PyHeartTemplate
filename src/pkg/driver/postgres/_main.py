@@ -218,6 +218,7 @@ class PostgresDriver(metaclass=_Singleton):
         conn (dict): A dictionary to manage transaction-specific connections.
     """
 
+    name = "postgres"
     pool: asyncpg.Pool = None  # type: ignore
 
     _host: str

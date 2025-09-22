@@ -11,12 +11,10 @@ from src.internal.redis import core_redis
 from src.pkg.abc.cmd import Cmd
 from src.pkg.core.exception import CoreException
 from src.pkg.driver.postgres._main import PostgresDriver
-from src.pkg.driver.clickhouse._main import ClickhouseDriver
 from src.pkg.driver.query import inject as db_inject
 from src.pkg.fastapi.middleware import MasterMiddelware
 from src.repository import _startup as _startup_repo
 from src.repository import sample as sample_repo
-from src.repository import click as click_repo
 
 __all__ = ["HttpCmd"]
 
@@ -99,18 +97,9 @@ class HttpCmd(Cmd):
             password=get_config().POSTGRES.PASSWORD,
             db=get_config().POSTGRES.DB,
         )
-        driver = ClickhouseDriver(
-            host="0.0.0.0",
-            port="9000",
-            username="root",
-            password="password",
-            db="default",
-        )
 
         db_inject(_startup_repo, driver)
         db_inject(sample_repo, driver)
-
-        db_inject(click_repo, driver)
 
     def __reg_controller_v1(self) -> None:
         router_v1 = APIRouter(prefix="/v1")

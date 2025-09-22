@@ -302,7 +302,7 @@ def arg_parser() -> argparse.Namespace:
     parser.add_argument(
         "--cmd",
         "-c",
-        choices=["Http", "CreateSampleCli", "CoreConsumer", "SendMsg"],
+        choices=["Http", "CoreConsumer", "SendMsg", "_Test"],
         default="Http",
         required=False,
     )

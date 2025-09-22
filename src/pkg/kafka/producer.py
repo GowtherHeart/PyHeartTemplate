@@ -6,15 +6,13 @@ from ._base import _Singleton
 class ProducerKafka(metaclass=_Singleton):
     def __init__(
         self,
-        host: str,
-        port: str,
+        bootstrap_server_array: str,
         topic: str,
         group_id: str,
         sasl_username: str,
         sasl_password: str,
     ) -> None:
-        self.host = host
-        self.port = port
+        self.__bootstrap_server_array = bootstrap_server_array
         self.topic = topic
         self.group_id = group_id
         self.__sasl_username = sasl_username
@@ -22,7 +20,7 @@ class ProducerKafka(metaclass=_Singleton):
 
     async def send(self, msg: str) -> None:
         producer = AIOKafkaProducer(
-            bootstrap_servers="{}:{}".format(self.host, self.port),
+            bootstrap_servers=self.__bootstrap_server_array,
             sasl_plain_username=self.__sasl_username,
             sasl_plain_password=self.__sasl_password,
         )

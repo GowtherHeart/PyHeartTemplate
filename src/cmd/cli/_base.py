@@ -8,7 +8,12 @@ from src.repository import sample as sample_repo
 
 
 class BaseCliCmd(Cmd):
-    config_array = [ConfigName.CLI, ConfigName.POSTGRES, ConfigName.LOGGING]
+    config_array = [
+        ConfigName.CLI,
+        ConfigName.POSTGRES,
+        ConfigName.LOGGING,
+        ConfigName.KAFKA,
+    ]
 
     def _prepare(self) -> None:
         make_tx_id()

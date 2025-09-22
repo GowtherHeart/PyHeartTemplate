@@ -25,6 +25,7 @@ class ConfigName:
     CLI = "CLI"
     REDIS = "REDIS"
     LOGGING = "LOGGING"
+    KAFKA = "KAFKA"
 
 
 class HttpSettings(BaseSettings):
@@ -161,6 +162,22 @@ class RedisSettings(BaseSettings):
     DB: str = Field(validate_default=False)
 
 
+class KafkaSettings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_nested_delimiter="__",
+        env_file_encoding="utf-8",
+        env_prefix="KAFKA__",
+        extra="ignore",
+    )
+
+    BOOTSTRAP_SERVER: str = Field(validate_default=False)
+    USERNAME: str = Field(validate_default=False)
+    PASSWORD: str = Field(validate_default=False)
+    GROUP_ID: str = Field(validate_default=False)
+    TOPIC_ARRAY: str = Field(validate_default=False)
+
+
 class LoggingSettings(BaseSettings):
     """Logging system configuration settings.
 
@@ -192,6 +209,7 @@ MAP = {
     ConfigName.CLI: CliSettings,
     ConfigName.REDIS: RedisSettings,
     ConfigName.LOGGING: LoggingSettings,
+    ConfigName.KAFKA: KafkaSettings,
 }
 
 
@@ -249,6 +267,7 @@ class Config(metaclass=Singleton):
     POSTGRES: PostgresSettings
     REDIS: RedisSettings
     LOGGING: LoggingSettings
+    KAFKA: KafkaSettings
 
     CMD: str | None = None
     TESTING: bool = False
@@ -283,7 +302,7 @@ def arg_parser() -> argparse.Namespace:
     parser.add_argument(
         "--cmd",
         "-c",
-        choices=["Http", "CreateSampleCli"],
+        choices=["Http", "CreateSampleCli", "CoreConsumer", "SendMsg"],
         default="Http",
         required=False,
     )

@@ -4,10 +4,10 @@ from typing import Any
 
 from loguru import logger
 
-from src.pkg.driver.postgres import PostgresDriver
+from ._base import DriverProtocol, UQuery
 
 
-class Query:
+class Query(UQuery):
     """Base class for executing database queries using a specified driver.
 
     This class provides a framework for executing queries with parameters and handling
@@ -32,7 +32,7 @@ class Query:
 
     query: str = NotImplemented
     param: Sequence
-    driver: PostgresDriver
+    driver: DriverProtocol
     model: Any = None
     array: bool = False
     skip: bool = False
@@ -96,7 +96,7 @@ class Query:
             ):
                 raise _exc
 
-            logger.exception(f"[postgres] {exc}")
+            logger.exception(f"[{self.driver.name}] {exc}")
             if self.default_exception is not None:
                 raise self.default_exception
 
@@ -171,7 +171,7 @@ class QueryTxExecute(Query):
         return await self.driver.transaction_select(self.query, *self.param)
 
 
-def inject(module, driver) -> None:
+def inject(module, driver: DriverProtocol) -> None:
     """Injects a driver into Query subclasses within a given module.
 
     This function iterates over all classes in the provided module, identifies
@@ -186,7 +186,7 @@ def inject(module, driver) -> None:
         name: cls for name, cls in vars(module).items() if inspect.isclass(cls)
     }
     result: list[Any] = []
-    result.extend(v for v in class_array.values() if issubclass(v.__bases__[0], Query))
+    result.extend(v for v in class_array.values() if issubclass(v.__bases__[0], UQuery))
 
     logger.info(f"inject query: {result}")
     for obj in result:

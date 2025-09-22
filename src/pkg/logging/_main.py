@@ -11,6 +11,7 @@ class LoggingInit:
             format=self.format(),
             level=lvl,
             enqueue=True,
+            serialize=True,
         )
 
     def format(self) -> str:
